@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .btn {
+            padding: 12px;
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .action-btn {
+            margin-right: 5px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background-color: #007bff;
+            transform: scale(1.1);
+        }
+
+        .alert {
+            margin-top: 10px;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Button Animations for Smaller Screens */
+        @media (max-width: 767px) {
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+
+        /* Task List Row Hover Effect */
+        table tr:hover {
+            background-color: #f1f1f1;
+            cursor: pointer;
+            transform: scale(1.02);
+            transition: transform 0.2s ease;
+        }
+
+        /* Input and Button Transitions */
+        .form-control, .btn {
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .btn:focus {
+            outline: none;
+        }
+
+        /* Fade-in Animation */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container fade-in">
+        <!-- Registration Form -->
+        <h2>Register</h2>
+        <form id="register-form">
+            <input type="text" id="username" class="form-control" placeholder="Username" required>
+            <input type="email" id="email" class="form-control" placeholder="Email" required>
+            <input type="password" id="password" class="form-control" placeholder="Password" required>
+            <button type="submit" class="btn btn-success">Register</button>
+        </form>
+        <div id="register-message" class="alert" style="display: none;"></div>
+
+        <!-- Login Form -->
+        <h2>Login</h2>
+        <form id="login-form">
+            <input type="text" id="login-username" class="form-control" placeholder="Username" required>
+            <input type="password" id="login-password" class="form-control" placeholder="Password" required>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <div id="login-message" class="alert" style="display: none;"></div>
+
+        <!-- Task List -->
+        <div id="task-list-container" style="display: none;">
+            <h2>Your Tasks</h2>
+            <button id="create-task-btn" class="btn btn-success">Create Task</button>
+            <button id="logout-btn" class="btn btn-danger" onclick="logout()">Logout</button>
+
+            <table id="task-list">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="task-list-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:8000/api"; // Replace with your backend URL
+
+        // Register User
+        document.getElementById('register-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${apiUrl}/register/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+                const messageDiv = document.getElementById('register-message');
+
+                if (response.ok) {
+                    messageDiv.innerText = "User registered successfully!";
+                    messageDiv.classList.add('alert-success');
+                    messageDiv.style.display = 'block';
+                } else {
+                    messageDiv.innerText = data.error || 'Registration failed.';
+                    messageDiv.classList.add('alert-danger');
+                    messageDiv.style.display = 'block';
+                }
+            } catch (error) {
+                const messageDiv = document.getElementById('register-message');
+                messageDiv.innerText = 'Something went wrong. Please try again later.';
+                messageDiv.classList.add('alert-danger');
+                messageDiv.style.display = 'block';
+                console.error('Error:', error);
+            }
+        });
+
+        // Login User
+        document.getElementById('login-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${apiUrl}/login/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                const messageDiv = document.getElementById('login-message');
+
+                if (response.ok) {
+                    localStorage.setItem('token', data.token); // Save token for session
+                    messageDiv.innerText = "Login successful!";
+                    messageDiv.classList.add('alert-success');
+                    messageDiv.style.display = 'block';
+                    document.getElementById('login-form').reset();
+                    loadTasks();
+                    document.getElementById('task-list-container').style.display = 'block';
+                } else {
+                    messageDiv.innerText = data.error || 'Login failed.';
+                    messageDiv.classList.add('alert-danger');
+                    messageDiv.style.display = 'block';
+                }
+            } catch (error) {
+                const messageDiv = document.getElementById('login-message');
+                messageDiv.innerText = 'Something went wrong. Please try again later.';
+                messageDiv.classList.add('alert-danger');
+                messageDiv.style.display = 'block';
+                console.error('Error:', error);
+            }
+        });
+
+        // Logout User
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.reload();
+        }
+
+        // Fetch and display tasks
+        async function loadTasks() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}/tasks/`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error fetching tasks: ${response.status}`);
+                }
+
+                const tasks = await response.json();
+                const taskListBody = document.getElementById('task-list-body');
+                taskListBody.innerHTML = '';
+
+                tasks.forEach(task => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${task.title}</td>
+                        <td>${task.description}</td>
+                        <td>${task.priority}</td>
+                        <td>${task.status}</td>
+                        <td>
+                            <button class="action-btn btn btn-warning" onclick="editTask(${task.id})">Edit</button>
+                            <button class="action-btn btn btn-danger" onclick="deleteTask(${task.id})">Delete</button>
+                        </td>
+                    `;
+                    taskListBody.appendChild(row);
+                });
+            } catch (error) {
+                alert('Failed to load tasks: ' + error.message);
+            }
+        }
+
+        // Create Task
+        document.getElementById('create-task-btn').addEventListener('click', async function () {
+            const title = prompt('Enter task title');
+            const description = prompt('Enter task description');
+            const priority = prompt('Enter task priority (Low, Medium, High)');
+            const status = prompt('Enter task status (Yet-to-start, In-progress, Completed, Hold)');
+            const deadline = prompt('Enter task deadline (YYYY-MM-DD)');
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${apiUrl}/tasks/create/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title, description, priority, status, deadline })
+                });
+
+                if (response.ok) {
+                    loadTasks();
+                } else {
+                    throw new Error('Error creating task');
+                }
+            } catch (error) {
+                alert('Error creating task: ' + error.message);
+            }
+        });
+
+        // Edit Task
+        async function editTask(taskId) {
+            const taskTitle = prompt('Edit task title');
+            try {
+                const response = await fetch(`${apiUrl}/tasks/${taskId}/update/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title: taskTitle })
+                });
+                if (response.ok) loadTasks();
+            } catch (error) {
+                alert('Error editing task: ' + error.message);
+            }
+        }
+
+        // Delete Task
+        async function deleteTask(taskId) {
+            const confirmDelete = confirm('Are you sure you want to delete this task?');
+            if (confirmDelete) {
+                try {
+                    const response = await fetch(`${apiUrl}/tasks/${taskId}/delete/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        },
+                    });
+
+                    if (response.ok) {
+                        loadTasks();
+                    } else {
+                        alert('Error deleting task');
+                    }
+                } catch (error) {
+                    alert('Error deleting task: ' + error.message);
+                }
+            }
+        }
+
+        // On page load, check if logged in
+        if (localStorage.getItem('token')) {
+            loadTasks();
+            document.getElementById('task-list-container').style.display = 'block';
+        }
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

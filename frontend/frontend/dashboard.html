@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Dashboard</title>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --background-color: #f4f6f9;
+            --text-color: #333;
+            --table-bg: #fff;
+            --header-bg: #2c3e50;
+            --border-color: #ddd;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+
+        header #logout-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: var(--table-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th,
+        table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        table thead {
+            background-color: var(--header-bg);
+            color: white;
+        }
+
+        #create-task-btn {
+            display: block;
+            margin: 20px auto;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #task-form {
+            display: none;
+            margin-top: 20px;
+        }
+
+        #task-form input,
+        #task-form select,
+        #task-form textarea {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+
+        #task-form button {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        Task Dashboard
+        <button id="logout-btn" onclick="logout()">Logout</button>
+    </header>
+
+    <main>
+        <h3>Your Tasks</h3>
+        <table id="task-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Deadline</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Task rows will be dynamically added here -->
+            </tbody>
+        </table>
+        <button id="create-task-btn">Create New Task</button>
+
+        <div id="task-form">
+            <form id="new-task-form">
+                <label for="title">Task Title</label>
+                <input type="text" id="title" required>
+
+                <label for="description">Description</label>
+                <textarea id="description" required></textarea>
+
+                <label for="priority">Priority</label>
+                <select id="priority" required>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+
+                <label for="status">Status</label>
+                <select id="status" required>
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+
+                <label for="deadline">Deadline</label>
+                <input type="date" id="deadline" required>
+
+                <button type="submit">Save Task</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('You need to log in first.');
+            window.location.href = '/frontend/frontend/LoginForm.html'; // Redirect to login
+        }
+
+        // Fetch and display tasks
+        function fetchTasks() {
+            fetch('http://127.0.0.1:8000/api/tasks/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        populateTaskTable(data.tasks);
+                    } else {
+                        alert('Failed to fetch tasks.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching tasks:', error);
+                    alert('Error fetching tasks: ' + error.message);
+                });
+        }
+
+        // Populate table with tasks
+        function populateTaskTable(tasks) {
+            const tbody = document.querySelector('#task-table tbody');
+            tbody.innerHTML = '';
+            tasks.forEach(task => {
+                const row = `
+                    <tr>
+                        <td>${task.title}</td>
+                        <td>${task.description}</td>
+                        <td>${task.priority}</td>
+                        <td>${task.status}</td>
+                        <td>${task.deadline}</td>
+                        <td>
+                            <button onclick="deleteTask(${task.id})">Delete</button>
+                        </td>
+                    </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // Delete task
+        function deleteTask(taskId) {
+            fetch(`http://127.0.0.1:8000/api/tasks/${taskId}/`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(() => fetchTasks())
+                .catch(error => console.error('Error deleting task:', error));
+        }
+
+        // Show task form when "Create New Task" button is clicked
+        document.getElementById('create-task-btn').addEventListener('click', () => {
+            const taskForm = document.getElementById('task-form');
+            taskForm.style.display = taskForm.style.display === 'block' ? 'none' : 'block'; // Toggle visibility
+        });
+
+        // Create new task
+        document.getElementById('new-task-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const newTask = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                priority: document.getElementById('priority').value,
+                status: document.getElementById('status').value,
+                deadline: document.getElementById('deadline').value
+            };
+
+            fetch('http://127.0.0.1:8000/api/tasks/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newTask)
+            })
+                .then(() => {
+                    fetchTasks();
+                    document.getElementById('new-task-form').reset();
+                    document.getElementById('task-form').style.display = 'none'; // Hide the form again after saving
+                })
+                .catch(error => console.error('Error creating task:', error));
+        });
+
+        // Logout functionality
+        function logout() {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            window.location.href = '/frontend/frontend/LoginForm.html'; // Redirect to your login page
+        }
+
+        // Fetch tasks on page load
+        fetchTasks();
+    </script>
+</body>
+
+</html>
